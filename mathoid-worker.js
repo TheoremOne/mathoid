@@ -114,7 +114,7 @@ app.use(express.limit('25mb'));
 app.get('/', function(req, res){
     if (!q) {
         res.writeHead(405);
-        return res.end(JSON.stringify({error: 'Use POST method'});
+        return res.end(JSON.stringify({error: 'Use POST method'}));
     }
 });
 
