@@ -1,10 +1,11 @@
 #!/usr/bin/env node
 
 var cluster = require('cluster'),
-    port = process.env.MATHOID_PORT || 10042;
+    os      = require('os');
+    port    = process.env.MATHOID_PORT || 10042;
 
 if (cluster.isMaster) {
-    var numCPUs = require('os').cpus().length;
+    var numCPUs = os.cpus().length;
 
     for (var i = 0; i < numCPUs; i++) {
         cluster.fork();

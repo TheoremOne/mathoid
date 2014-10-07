@@ -37,7 +37,7 @@ var startBackend = function (cb) {
 
 var handleRequest = function (req, res, q, type) {
     // Do the backend request
-    var reqBody = new Buffer(querystring.stringify({q: q, type: type, format: 'json'})),
+    var reqBody = new Buffer(querystring.stringify({q: q, type: type, format: 'json'}));
 
     options = {
         method: 'POST',
@@ -119,8 +119,8 @@ app.get('/', function(req, res){
 });
 
 app.post(/^\/$/, function (req, res) {
-    var q = req.body.q;
-    var type = req.body.type || 'tex';
+    var q = req.body.q,
+        type = req.body.type || 'tex';
 
     // First some rudimentary input validation
     if (!q) {

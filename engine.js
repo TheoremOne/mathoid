@@ -11,10 +11,10 @@ window.engine = (new (function () {
         success = false;
         try {
             mml = jax.root.toMathML('');
-            if( mml.indexOf('<mtext mathcolor="red">') == -1 ){
+            if (mml.indexOf('<mtext mathcolor="red">') == -1) {
                 success = true;
             }
-        } catch(err) {
+        } catch (err) {
             if (!err.restart) {
                 // an actual error
                 throw err;
@@ -27,7 +27,9 @@ window.engine = (new (function () {
     // bind helper.
     this.bind = function (method) {
         var engine = this;
-        return function () { return method.apply(engine, arguments); };
+        return function () {
+            return method.apply(engine, arguments);
+        };
     };
 
     // Initialize engine.
@@ -79,7 +81,7 @@ window.engine = (new (function () {
 
         // clone and copy all used paths into local defs.
         // xlink:href in uses FIX
-        uses = svg.getElementsByTagName('use'),
+        uses = svg.getElementsByTagName('use');
 
         // copy only one copy of each path
         havePaths = {};
