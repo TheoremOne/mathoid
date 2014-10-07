@@ -1,50 +1,46 @@
 #!/usr/bin/env node
-/**
- * A very basic cluster-based server runner. Restarts failed workers, but does
- * not much else right now.
- */
 
 var cluster = require('cluster'),
-	// when running on appfog.com the listen port for the app
-	// is passed in an environment variable.  Most users can ignore this!
-	port = process.env.MATHOID_PORT || 10042;
+    port = process.env.MATHOID_PORT || 10042;
 
 if (cluster.isMaster) {
-	// Start a few more workers than there are cpus visible to the OS, so that we
-	// get some degree of parallelism even on single-core systems. A single
-	// long-running request would otherwise hold up all concurrent short requests.
-	var numCPUs = require('os').cpus().length + 3;
-	// Fork workers.
-	for (var i = 0; i < numCPUs; i++) {
-		cluster.fork();
-	}
+    var numCPUs = require('os').cpus().length;
 
-	cluster.on('exit', function(worker) {
-		if (!worker.suicide) {
-			var exitCode = worker.process.exitCode;
-			console.log('worker', worker.process.pid,
-									'died ('+exitCode+'), restarting.');
-			cluster.fork();
-		}
-	});
+    for (var i = 0; i < numCPUs; i++) {
+        cluster.fork();
+    }
 
-	process.on('SIGTERM', function() {
-		console.log('master shutting down, killing workers');
-		var workers = cluster.workers;
-		Object.keys(workers).forEach(function(id) {
-				console.log('Killing worker ' + id);
-				workers[id].destroy();
-		});
-		console.log('Done killing workers, bye');
-		process.exit(1);
-	} );
-	console.log('Starting Mathoid on port ' + port +
-			'\nPoint your browser to http://localhost:' + port + '/ for a test form\n');
+    cluster.on('exit', function (worker) {
+        var exitCode;
+
+        if (!worker.suicide) {
+            exitCode = worker.process.exitCode;
+            console.log('worker', worker.process.pid, 'died ('+exitCode+'), restarting.');
+            cluster.fork();
+        }
+    });
+
+    process.on('SIGTERM', function () {
+        var workers = cluster.workers;
+
+        console.log('master shutting down, killing workers');
+
+        Object.keys(workers).forEach(function (id) {
+            console.log('Killing worker ' + id);
+            workers[id].destroy();
+        });
+
+        console.log('Done killing workers, bye');
+        process.exit(1);
+    });
+    console.log('Starting Mathoid on port ' + port + '\nPoint your browser to http://localhost:' + port + '/ for a test form\n');
 } else {
-	var mathoidWorker = require('./mathoid-worker.js');
-	process.on('SIGTERM', function() {
-		console.log('Worker shutting down');
-		process.exit(1);
-	});
-	mathoidWorker.listen(port);
+    var mathoidWorker = require('./mathoid-worker.js');
+
+    process.on('SIGTERM', function() {
+        console.log('Worker shutting down');
+        process.exit(1);
+    });
+
+    mathoidWorker.listen(port);
 }
