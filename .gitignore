@@ -9,4 +9,3 @@ debian/mathoid.postinst.debhelper
 debian/mathoid.preinst.debhelper
 debian/mathoid.prerm.debhelper
 debian/mathoid.substvars
- 

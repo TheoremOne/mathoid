@@ -33,7 +33,8 @@ if (cluster.isMaster) {
         console.log('Done killing workers, bye');
         process.exit(1);
     });
-    console.log('Starting Mathoid on port ' + port + '\nPoint your browser to http://localhost:' + port + '/ for a test form\n');
+
+    console.log('Starting Mathoid on port ' + port);
 } else {
     var mathoidWorker = require('./mathoid-worker.js');
 
