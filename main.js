@@ -1,7 +1,7 @@
 var VERSION = '0.1-dev';
 
 var fs = require('fs'),
-    getopt = require('node-getopt'),
+    opts = require('minimist')(process.argv.slice(2)),
     server = require('webserver').create(),
     page = require('webpage').create();
 
@@ -19,36 +19,41 @@ var requestNum = 0;
 var activeRequests = {};
 var service = null;
 
-var opts = getopt.create([
-    ['v', 'version',      'Print version number and exit'],
-    ['p', 'port=ARG',     'Port to listen'],
-    ['r', 'requests=ARG', 'Process this many requests and then exit. -1 means never stop.'],
-    ['b', 'bench=ARG',    'Use alternate bench page (default index.html)'],
-    ['d', 'debug',        'Enable verbose debug messages']
-]).bindHelp().parseSystem();
+var usage = [
+    'Usage: phantomjs main.js [options]',
+    'Options:',
+    '  -h,--help            Print this usage message and exit',
+    '  -v,--version         Print the version number and exit',
+    '  -p,--port <port>     IP port on which to start the server',
+    '  -r,--requests <num>  Process this many requests and then exit.  -1 means ',
+    '                       never stop.',
+    '  -b,--bench <page>    Use alternate bench page (default is index.html)',
+    '  -d,--debug           Enable verbose debug messages'
+].join('\n');
 
-if (opts.options.version) {
+if (opts.help || opts.h) {
+    console.log(usage);
+    phantom.exit(0);
+}
+
+if (opts.version) {
     console.log('svgtex version ' + VERSION);
     phantom.exit(0);
 }
 
-if (opts.options.port) {
-    port = parseInt(opts.options.port, 10);
+if (opts.port || opts.p) {
+    port = parseInt(opts.port || opts.p, 10);
 }
 
-if (opts.options.port || opts.options.p) {
-    port = parseInt(opts.options.port || opts.options.p, 10);
+if (opts.requests || opts.r) {
+    requestsToServe = parseInt(opts.requests || opts.r, 10);
 }
 
-if (opts.options.requests || opts.options.r) {
-    requestsToServe = parseInt(opts.options.requests || opts.options.r, 10);
+if (opts.bench || opts.b) {
+    benchPage = opts.bench || opts.b;
 }
 
-if (opts.options.bench || opts.options.b) {
-    benchPage = opts.options.bench || opts.options.b;
-}
-
-if (opts.options.debug || opts.options.d) {
+if (opts.debug || opts.d) {
     debug = true;
 }
 
