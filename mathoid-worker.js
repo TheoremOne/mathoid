@@ -133,5 +133,20 @@ app.all('/equation.svg', function(req, res) {
     });
 });
 
+app.all('/equation.mml', function(req, res) {
+    return handleClientRequest(req, res, function (body, isError) {
+        var buffer = new Buffer(isError ? body.error : body.mml),
+            statusCode = isError ? 500 : 200,
+            contentType = isError ? 'text/html; charset=utf-8' :
+                                    'text/mml; charset=utf-8';
+
+        res.writeHead(statusCode, {
+            'Content-Type': contentType,
+            'Content-Length': buffer.length
+        });
+        res.end(buffer);
+    });
+});
+
 
 module.exports = app;
