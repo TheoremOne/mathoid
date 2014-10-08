@@ -22,7 +22,6 @@ var startBackend = function (cb) {
 
     backendPort = Math.floor(9000 + Math.random() * 50000);
     backendURL = 'http://localhost:' + backendPort.toString() + '/';
-    console.error(instanceName + ': Starting backend on port ' + backendPort);
     backend = child_process.spawn('phantomjs', ['main.js', '-p', backendPort]);
     backend.stdout.pipe(process.stderr);
     backend.stderr.pipe(process.stderr);
@@ -45,7 +44,7 @@ var handleRequest = function (opts) {
         body: reqBody,
         headers: {
             'Content-Length': reqBody.length,
-            'Content-Type': 'application/json'
+            'Content-Type': 'application/x-www-form-urlencoded'
         },
         timeout: 2000
     };
@@ -109,7 +108,7 @@ var handleClientRequest = function (req, res, responseCallback) {
 app.all('/equation.json', function(req, res) {
     return handleClientRequest(req, res, function (body, isError) {
         var buffer = new Buffer(JSON.stringify(body)),
-            statusCode = isEerror ? 500 : 200;
+            statusCode = isError ? 500 : 200;
 
         res.writeHead(statusCode, {
             'Content-Type': 'application/json',
@@ -120,11 +119,11 @@ app.all('/equation.json', function(req, res) {
 });
 
 app.all('/equation.svg', function(req, res) {
-    return handleClientRequest(req, res, function (body, isEerror) {
-        var buffer = new Buffer(isEerror ? body.error : body.svg),
-            statusCode = isEerror ? 500 : 200,
-            contentType = isEerror ? 'text/html; charset=utf-8' :
-                                     'image/svg+xml; charset=utf-8';
+    return handleClientRequest(req, res, function (body, isError) {
+        var buffer = new Buffer(isError ? body.error : body.svg),
+            statusCode = isError ? 500 : 200,
+            contentType = isError ? 'text/html; charset=utf-8' :
+                                    'image/svg+xml; charset=utf-8';
 
         res.writeHead(statusCode, {
             'Content-Type': contentType,
