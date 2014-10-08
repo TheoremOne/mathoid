@@ -11,6 +11,7 @@ var restarts = 10,
     requestQueue = [],
     backend,
     backendPort,
+    backendURL,
     app;
 
 var startBackend = function (cb) {
@@ -20,6 +21,7 @@ var startBackend = function (cb) {
     }
 
     backendPort = Math.floor(9000 + Math.random() * 50000);
+    backendURL = 'http://localhost:' + backendPort.toString() + '/';
     console.error(instanceName + ': Starting backend on port ' + backendPort);
     backend = child_process.spawn('phantomjs', ['main.js', '-p', backendPort]);
     backend.stdout.pipe(process.stderr);
@@ -34,17 +36,20 @@ var startBackend = function (cb) {
     }, 1000);
 };
 
-var handleRequest = function (req, res, q, type) {
-    // Do the backend request
-    var reqBody = new Buffer(querystring.stringify({q: q, type: type, format: 'json'}));
+var handleRequest = function (req, res, q, type, opts) {
+    var reqBody;
+
+    opts = opts || {}
+    reqBody = new Buffer(JSON.stringify({
+        q: q,
+        type: type,
+        format: opts.format || 'json'
+    }));
 
     options = {
         method: 'POST',
-        uri: 'http://localhost:' + backendPort.toString() + '/',
+        uri: backendURL,
         body: reqBody,
-        // Work around https://github.com/ariya/phantomjs/issues/11421 by setting
-        // explicit upper-case headers (request sends them lowercase by default)
-        // and manually encoding the body.
         headers: {
             'Content-Length': reqBody.length,
             'Content-Type': 'application/x-www-form-urlencoded'
@@ -110,7 +115,7 @@ app = express.createServer();
 app.use(express.bodyParser({maxFieldsSize: 25 * 1024 * 1024}));
 app.use(express.limit('25mb'));
 
-app.all('/', function(req, res){
+var handleClientRequest = function (req, res, opts) {
     var q = req.param('q'),
         type = req.param('type') || 'tex';
 
@@ -120,13 +125,22 @@ app.all('/', function(req, res){
         return res.end(JSON.stringify({error: 'q (query) parameter is missing!'}));
     }
 
-    requestQueue.push(handleRequest.bind(null, req, res, q, type));
+    requestQueue.push(handleRequest.bind(null, req, res, q, type, opts));
 
     // phantomjs only handles one request at a time. Enforce this.
     if (requestQueue.length === 1) {
         // Start this process
         handleRequests();
     }
+};
+
+app.all('/', function(req, res) {
+    return handleClientRequest(req, res);
 });
+
+app.all('/svg', function(req, res) {
+    return handleClientRequest(req, res, {svg: true});
+});
+
 
 module.exports = app;

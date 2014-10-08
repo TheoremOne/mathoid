@@ -6,7 +6,7 @@ window.engine = (new (function () {
     this.buffer = [];
 
     // jax to MathML
-    var toMathML = function (jax,callback) {
+    var toMathML = function (jax, callback) {
         var mml,
         success = false;
         try {
@@ -19,9 +19,9 @@ window.engine = (new (function () {
                 // an actual error
                 throw err;
             }
-            return MathJax.Callback.After([toMathML,jax,callback],err.restart);
+            return MathJax.Callback.After([toMathML, jax, callback], err.restart);
         }
-        MathJax.Callback(callback)(mml,success);
+        MathJax.Callback(callback)(mml, success);
     }
 
     // bind helper.
@@ -124,17 +124,12 @@ window.engine = (new (function () {
         if (t === null || t.jax === null) {
             this.buffer.push([query, callback]);
         } else {
-            width = query.width;
+            width = query.width || '1000';
             div = t.div;
             jax = t.jax;
             q = query.q;
 
-            if (width === null) {
-                // Let's just use a default width of 1000 (arbitrary)
-                div.setAttribute('style', 'width: 1000px');
-            } else {
-                div.setAttribute('style', 'width: ' + width + 'px');
-            }
+            div.setAttribute('style', 'width: ' + width + 'px');
 
             // Possibilities:
             // - if q and width are the same as last time, no need to Rerender
@@ -160,7 +155,7 @@ window.engine = (new (function () {
                     callback([query, ret, '', false]);
                 } else {
                     ret = this._merge(svg_elem.cloneNode(true));
-                    toMathML(jax, function (mml,success) {
+                    toMathML(jax, function (mml, success) {
                         callback([query, ret, mml, success]);
                     })
                 }
