@@ -53,12 +53,6 @@ var handleRequest = function (opts) {
     request(options, function (error, response, body) {
         var errBuf;
 
-        try {
-            body = new Buffer(body);
-        } catch (e) {
-            body = new Buffer(e.message.toString());
-        }
-
         // Remove request from queue
         requestQueue.shift();
         if (error || response.statusCode !== 200) {
