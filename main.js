@@ -1,148 +1,82 @@
-// Version
 var VERSION = '0.1-dev';
 
-var system = require('system');
+var fs = require('fs'),
+    system = require('system'),
+    Getopt = require('node-getopt'),
+    server = require('webserver').create(),
+    page = require('webpage').create();
+
 var args = system.args;
-var server = require('webserver').create();
-var page = require('webpage').create();
-var fs = require('fs');
 
 var port = 16000;
-var requests_to_serve = -1;
-var bench_page = 'index.html';
+var requestsToServe = -1;
+var benchPage = 'index.html';
 var debug = false;
 
 // Parse command-line options.  This keeps track of which one we are on
-var arg_num = 1;
-
-var to_exit = false;
-
+var argNum = 1;
 var arg;
 
 // activeRequests holds information about any active MathJax requests.  It is
-// a hash, with a sequential number as the key.  request_num gets incremented
+// a hash, with a sequential number as the key.  requestNum gets incremented
 // for *every* HTTP request, but only requests that get passed to MathJax have an
 // entry in activeRequests.  Each element of activeRequests
 // is an array of [<response object>, <start time>].
-var request_num = 0;
+var requestNum = 0;
 var activeRequests = {};
 
 // This will hold the test HTML form, which is read once, the first time it is
 // requested, from test.html.
-var test_form_filename = 'test.html';
-var test_form = null;
+var testFormFilename = 'test.html';
+var testForm = null;
 
 var service = null;
 
-var usage =
-'Usage: phantomjs main.js [options]\n' +
-'Options:\n' +
-'  -h,--help            Print this usage message and exit\n' +
-'  -v,--version         Print the version number and exit\n' +
-'  -p,--port <port>     IP port on which to start the server\n' +
-'  -r,--requests <num>  Process this many requests and then exit.  -1 means \n' +
-'                       never stop.\n' +
-'  -b,--bench <page>    Use alternate bench page (default is index.html)\n' +
-'  -d,--debug           Enable verbose debug messages\n';
+var usage = [
+    'Usage: phantomjs main.js [options]',
+    'Options:',
+    '  -r,--requests <num>  Process this many requests and then exit. -1 means ',
+    '                       never stop.',
+    '  -b,--bench <page>    Use alternate bench page (default is index.html)',
+    '  -d,--debug           Enable verbose debug messages'
+].join("\n");
+
+var opts = new Getopt([
+    ['v', 'version',      'Print version number and exit'],
+    ['p', 'port=ARG',     'Port to listen'],
+    ['r', 'requests=ARG', 'Process this many requests and then exit. -1 means never stop.'],
+    ['b', 'bench=ARG',    'Use alternate bench page (default index.html)'],
+    ['d', 'debug',        'Enable verbose debug messages']
+]).bindHelp().parseSystem();
 
 
-// Helper function for option parsing.  Allow option/arg in any of
-// these forms:
-//    1: -p 1234
-//    2: --po 1234
-//    3: --po=1234
-// Returns:
-//    1 or 2: true
-//    3:      '1234'
-//    else:   false
-function option_match(name, takes_optarg, arg) {
-    var ieq = arg.indexOf('=');
-
-    var arg_key;
-    if (arg.substr(0, 2) == '--' && (takes_optarg && ieq != -1)) {  // form #3
-        arg_key = arg.substring(2, ieq);
-        if (name.substr(0, arg_key.length) == arg_key) {
-            return arg.substr(ieq + 1);
-        }
-        return false;
-    }
-
-    if (arg.substr(0, 2) == '--') {
-        arg_key = arg.substr(2);
-    } else if (arg.substr(0, 1) == '-') {
-        arg_key = arg.substr(1);
-    } else {
-        return false;
-    }
-    return name.substr(0, arg_key.length) == arg_key;
+if (opts.options.version) {
+    console.log('svgtex version ' + VERSION);
+    phantom.exit(0);
 }
 
-// This helper handles one option that takes an option-argument
-function option_arg_parse(name) {
-    var arg = args[arg_num];
-    match = option_match(name, true, arg);
-    if (!match) return false;
-
-    if (typeof match != 'string') {
-        if (arg_num + 1 < args.length) {
-            arg_num++;
-            match = args[arg_num];
-        } else {
-            phantom.exit(1);
-        }
-    }
-
-    if (name == 'port') {
-        port = match - 0;
-    } else if (name == 'requests') {
-        requests_to_serve = match - 0;
-    } else if (name == 'bench') {
-        bench_page = match;
-    }
-
-    arg_num++;
-    return true;
+if (opts.options.port) {
+    port = parseInt(opts.options.port, 10);
 }
 
-while (arg_num < args.length) {
-    arg = args[arg_num];
-
-    if (option_match('help', false, arg)) {
-        console.log(usage);
-        phantom.exit(0);
-        break;
-    }
-
-    if (option_match('version', false, arg)) {
-        console.log('svgtex version ' + VERSION);
-        phantom.exit(0);
-        break;
-    }
-
-    if (option_match('debug', false, arg)) {
-        debug = true;
-        arg_num++;
-        continue;
-    }
-
-    if (option_arg_parse('port')) {
-        continue;
-    }
-    if (option_arg_parse('requests')) {
-        continue;
-    }
-    if (option_arg_parse('bench')) {
-        continue;
-    }
-
-    console.error("Unrecognized argument: '" + arg + "'. Use '--help' for usage info.");
-    phantom.exit(1);
-    break;
+if (opts.options.port || opts.options.p) {
+    port = parseInt(opts.options.port || opts.options.p, 10);
 }
 
-// thanks to:
-// stackoverflow.com/questions/5515869/string-length-in-bytes-in-javascript
-function utf8_strlen(str) {
+if (opts.options.requests || opts.options.r) {
+    requestsToServe = parseInt(opts.options.requests || opts.options.r, 10);
+}
+
+if (opts.options.bench || opts.options.b) {
+    benchPage = opts.options.bench || opts.options.b;
+}
+
+if (opts.options.debug || opts.options.d) {
+    debug = true;
+}
+
+// Thanks to: stackoverflow.com/questions/5515869/string-length-in-bytes-in-javascript
+var utf8Strlen = function (str) {
     var m = encodeURIComponent(str).match(/%[89ABab]/g);
     return str.length + (m ? m.length : 0);
 }
@@ -152,75 +86,81 @@ function utf8_strlen(str) {
 // process() function in engine.js:  the request number, the original
 // text, and either the converted svg, or an array of one element
 // that holds an error message.
-page.onCallback = function(data) {
+page.onCallback = function (data) {
     var query = data[0],
-    num = query.num,
-    src = query.q,
-        svg_or_error = data[1],
+        num = query.num,
+        src = query.q,
+        svgOrError = data[1],
         mml = data[2],
-            record = activeRequests[num],
-            resp = record[0],
-                start_time = record[1],
-                duration = (new Date()).getTime() - start_time,
-                    duration_msg = ', took ' + duration + 'ms.',
-                    log ,
-                        validRequest = false,
-                        success = data[3];
-    if( (typeof svg_or_error) === 'string'){
+        success = data[3],
+        record = activeRequests[num],
+        resp = record[0],
+        startTime = record[1],
+        duration = (new Date()).getTime() - startTime,
+        durationMsg = ', took ' + duration + 'ms.',
+        validRequest = false,
+        log;
+
+    if( (typeof svgOrError) === 'string'){
         validRequest = true;
         log = num + ': ' + src.substr(0, 30) + '.. ' +
-            src.length + 'B query, OK ' + svg_or_error.length + 'B result' +
-            duration_msg;
+            src.length + 'B query, OK ' + svgOrError.length + 'B result' +
+            durationMsg;
     } else {
         log = src.substr(0, 30) + '.. ' +
-            src.length + 'B query, error: ' + svg_or_error[0] + duration_msg;
+            src.length + 'B query, error: ' + svgOrError[0] + durationMsg;
     }
     if(query.format == 'json'){
         if ( validRequest ) {
             resp.statusCode = 200;
-            //Temporary fix for BUG 62921
+
+            // Temporary fix for BUG 62921
             if (query.type == 'mml'){
                 mml = '';
                 src = 'mathml';
             }
-            //End of fix
-            out = JSON.stringify({input:src,
-                svg:svg_or_error,
-                mml:mml,
-                log:log,
-                success:success});
+            // End of fix
+
+            out = JSON.stringify({
+                input: src,
+                svg: svgOrError,
+                mml: mml,
+                log: log,
+                success: success
+            });
             resp.setHeader('Content-Type', 'application/json');
-            resp.setHeader('Content-Length', utf8_strlen(out).toString() );
+            resp.setHeader('Content-Length', utf8Strlen(out).toString() );
             resp.write(out);
         } else {
             resp.statusCode = 400;
-            out = JSON.stringify({input:src,
-                err:svg_or_error[0],
-                mml:mml,
-                log:log,
-                success:success});
-            //out = JSON.stringify({err:data[1][0],svg:data[1],mml:data[2],'log':log,'sucess':false});
+            out = JSON.stringify({
+                input: src,
+                err: svgOrError[0],
+                mml: mml,
+                log: log,
+                success: success
+            });
             resp.write(out);
             console.log(log);
             phantom.exit(1);
         }
     } else {
-        if ((typeof svg_or_error) === 'string') {
+        if ((typeof svgOrError) === 'string') {
             resp.statusCode = 200;
             resp.setHeader("Content-Type", "image/svg+xml; charset=utf-8");
-            resp.setHeader("Content-Length", utf8_strlen(svg_or_error));
-            resp.write(svg_or_error);
+            resp.setHeader("Content-Length", utf8Strlen(svgOrError));
+            resp.write(svgOrError);
             console.log(log);
         } else {
             resp.statusCode = 400;    // bad request
-            resp.write(svg_or_error[0]);
+            resp.write(svgOrError[0]);
             console.log(num, log);
         }
         resp.close();
     }
     delete(activeRequests[num]);
 
-    if (!(--requests_to_serve)) {
+    if (!(--requestsToServe)) {
         phantom.exit();
     }
 }
@@ -228,22 +168,22 @@ page.onCallback = function(data) {
 
 // Parse the request and return an object with the parsed values.
 // It will either have an error indication, e.g.
-//   { num: 5, status_code: 400, error: "message" }
+//   { num: 5, statusCode: 400, error: "message" }
 // Or indicate that the test form should be returned, e.g.
-//   { num: 5, test_form: 1 }
+//   { num: 5, testForm: 1 }
 // or a valid request, e.g.
 //   { num: 5, type: 'tex', q: 'n^2', width: '500' }
-
-function parse_request(req) {
+var parseRequest = function (req) {
     // Set any defaults here:
     var query = {
-        num: request_num++,
+        num: requestNum++,
         type: 'tex',
         width: null,
         format: 'svg' //possible svg or json
     };
+
     // qs will store the content of the (tex or mml) math
-    var qs, url, iq, param_strings, num_param_strings, ps, ie, key, val;
+    var qs, url, iq, paramStrings, numParamStrings, ps, ie, key, val;
 
     if (debug) {
         if (req.method == 'POST') {
@@ -258,13 +198,13 @@ function parse_request(req) {
 
         if (url == '' || url == '/') {
             // User has requested the test form
-            if (test_form == null && fs.isReadable(test_form_filename)) {
-                test_form = fs.read(test_form_filename);  // set the global variable
+            if (testForm == null && fs.isReadable(testFormFilename)) {
+                testForm = fs.read(testFormFilename);  // set the global variable
             }
-            if (test_form != null) {
-                query.test_form = 1;
+            if (testForm != null) {
+                query.testForm = 1;
             } else {
-                query.status_code = 500;  // Internal server error
+                query.statusCode = 500;  // Internal server error
                 query.error = "Can't find test form";
             }
             return query;
@@ -272,7 +212,7 @@ function parse_request(req) {
 
         iq = url.indexOf("?");
         if (iq == -1) {  // no query string
-            query.status_code = 400;  // bad request
+            query.statusCode = 400;  // bad request
             query.error = "Missing query string";
             return query;
         }
@@ -280,25 +220,25 @@ function parse_request(req) {
         qs = url.substr(iq+1);
     } else if (req.method == 'POST') {
         if (typeof req.postRaw !== 'string') {   // which can happen
-            query.status_code = 400;  // bad request
+            query.statusCode = 400;  // bad request
             query.error = "Missing post content";
             return query;
         }
         qs = req.postRaw;
     } else {  // method is not GET or POST
-        query.status_code = 400;  // bad request
+        query.statusCode = 400;  // bad request
         query.error = "Method " + req.method + " not supported";
         return query;
     }
 
-    param_strings = qs.split(/&/);
-    num_param_strings = param_strings.length;
+    paramStrings = qs.split(/&/);
+    numParamStrings = paramStrings.length;
 
-    for (var i = 0; i < num_param_strings; ++i) {
-        ps = param_strings[i];
+    for (var i = 0; i < numParamStrings; ++i) {
+        ps = paramStrings[i];
         ie = ps.indexOf('=');
         if (ie == -1) {
-            query.status_code = 400;  // bad request
+            query.statusCode = 400;  // bad request
             query.error = "Can't decipher request parameter";
             return query;
         }
@@ -313,14 +253,14 @@ function parse_request(req) {
         } else if (key == 'format') {
             query.format = val;
         } else {
-            query.status_code = 400;  // bad request
+            query.statusCode = 400;  // bad request
             query.error = "Unrecognized parameter name: " + key;
             return query;
         }
     }
 
     if (!query.q) {   // no source math
-        query.status_code = 400;  // bad request
+        query.statusCode = 400;  // bad request
         query.error = "No source math detected in input";
         return query;
     }
@@ -328,22 +268,22 @@ function parse_request(req) {
     return query;
 }
 
-function listenLoop() {
+var listenLoop = function () {
     // Set up the listener that will respond to every new request
-    service = server.listen('0.0.0.0:' + port, function(req, resp) {
-        var query = parse_request(req);
-        var request_num = query.num;
-        console.log(request_num + ': ' + "received: " + req.method + " " +
+    service = server.listen('0.0.0.0:' + port, function (req, resp) {
+        var query = parseRequest(req);
+        var requestNum = query.num;
+        console.log(requestNum + ': ' + "received: " + req.method + " " +
                 req.url.substr(0, 30) + " ..");
 
-        if (query.test_form) {
-            console.log(request_num + ": returning test form");
-            resp.write(test_form);
+        if (query.testForm) {
+            console.log(requestNum + ": returning test form");
+            resp.write(testForm);
             resp.close();
         } else {
             if (query.error) {
-                console.log(request_num + ": error: " + query.error);
-                resp.statusCode = query.status_code;
+                console.log(requestNum + ": error: " + query.error);
+                resp.statusCode = query.statusCode;
                 resp.write(query.error);
                 resp.close();
             } else {
@@ -352,8 +292,8 @@ function listenLoop() {
                 // engine.js, which causes MathJax to render the math.  The callback is
                 // PhantomJS's callPhantom() function, which in turn calls page.onCallback(),
                 // above.  This just queues up the call, and will return at once.
-                activeRequests[request_num] = [resp, (new Date()).getTime()];
-                page.evaluate(function(_query) {
+                activeRequests[requestNum] = [resp, (new Date()).getTime()];
+                page.evaluate(function (_query) {
                     window.engine.process(_query, window.callPhantom);
                 }, query);
             }
@@ -365,9 +305,8 @@ function listenLoop() {
         phantom.exit(1);
     } else {
         console.log("PhantomJS started on port " + port);
-        //console.log("Point your brownser at http://localhost:" + port + " for a test form.");
     }
 }
 
-console.log("Loading bench page " + bench_page);
-page.open(bench_page, listenLoop);
+console.log("Loading bench page " + benchPage);
+page.open(benchPage, listenLoop);
