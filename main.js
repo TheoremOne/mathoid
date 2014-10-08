@@ -1,7 +1,8 @@
 var VERSION = '0.1-dev';
 
 var fs = require('fs'),
-    opts = require('minimist')(process.argv.slice(2)),
+    system = require('system'),
+    opts = require('minimist')(system.args.slice(1)),
     server = require('webserver').create(),
     page = require('webpage').create();
 
