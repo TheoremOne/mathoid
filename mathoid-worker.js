@@ -1,4 +1,3 @@
-// global includes
 var cluster       = require('cluster'),
     child_process = require('child_process'),
     express       = require('express'),
