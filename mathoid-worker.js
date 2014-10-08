@@ -110,16 +110,9 @@ app = express.createServer();
 app.use(express.bodyParser({maxFieldsSize: 25 * 1024 * 1024}));
 app.use(express.limit('25mb'));
 
-app.get('/', function(req, res){
-    if (!q) {
-        res.writeHead(405);
-        return res.end(JSON.stringify({error: 'Use POST method'}));
-    }
-});
-
-app.post(/^\/$/, function (req, res) {
-    var q = req.body.q,
-        type = req.body.type || 'tex';
+app.all('/', function(req, res){
+    var q = req.query.q || req.body.q,
+        type = req.query.type || req.body.type || 'tex';
 
     // First some rudimentary input validation
     if (!q) {
