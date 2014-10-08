@@ -111,13 +111,13 @@ app.use(express.bodyParser({maxFieldsSize: 25 * 1024 * 1024}));
 app.use(express.limit('25mb'));
 
 app.all('/', function(req, res){
-    var q = req.query.q || req.body.q,
-        type = req.query.type || req.body.type || 'tex';
+    var q = req.param('q'),
+        type = req.param('type') || 'tex';
 
     // First some rudimentary input validation
     if (!q) {
         res.writeHead(400);
-        return res.end(JSON.stringify({error: 'q (query) post parameter is missing!'}));
+        return res.end(JSON.stringify({error: 'q (query) parameter is missing!'}));
     }
 
     requestQueue.push(handleRequest.bind(null, req, res, q, type));
