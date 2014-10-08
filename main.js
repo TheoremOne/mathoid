@@ -71,79 +71,37 @@ var utf8Strlen = function (str) {
 // that holds an error message.
 page.onCallback = function (data) {
     var query = data[0],
-        svgOrError = data[1],
+        svg = data[1],
         mml = data[2],
-        success = data[3],
         num = query.num,
-        src = query.q,
+        src = query.math,
         record = activeRequests[num],
         resp = record[0],
-        startTime = record[1],
-        duration = (new Date()).getTime() - startTime,
-        durationMsg = ', took ' + duration + 'ms.',
-        validRequest = false,
-        log;
+        header;
 
-    if ((typeof svgOrError) === 'string'){
-        validRequest = true;
-        log = num + ': ' + src.substr(0, 30) + '.. ' +
-            src.length + 'B query, OK ' + svgOrError.length + 'B result' +
-            durationMsg;
-    } else {
-        log = src.substr(0, 30) + '.. ' +
-            src.length + 'B query, error: ' + svgOrError[0] + durationMsg;
-    }
-    if (query.format == 'json'){
-        if (validRequest) {
-            resp.statusCode = 200;
-
-            // Temporary fix for BUG 62921
-            if (query.type == 'mml'){
-                mml = '';
-                src = 'mathml';
-            }
-            // End of fix
-
-            out = JSON.stringify({
-                input: src,
-                svg: svgOrError,
-                mml: mml,
-                log: log,
-                success: success
-            });
-            resp.setHeader('Content-Type', 'application/json');
-            resp.setHeader('Content-Length', utf8Strlen(out).toString() );
-            resp.write(out);
-        } else {
-            resp.statusCode = 400;
-            out = JSON.stringify({
-                input: src,
-                err: svgOrError[0],
-                mml: mml,
-                log: log,
-                success: success
-            });
-            resp.write(out);
-            console.log(log);
-            phantom.exit(1);
+    if (typeof svg === 'string') {
+        if (query.type == 'mml'){
+            mml = src;
         }
-    } else {
-        if ((typeof svgOrError) === 'string') {
-            resp.statusCode = 200;
-            resp.setHeader("Content-Type", "image/svg+xml; charset=utf-8");
-            resp.setHeader("Content-Length", utf8Strlen(svgOrError));
-            resp.write(svgOrError);
-            console.log(log);
-        } else {
-            resp.statusCode = 400;    // bad request
-            resp.write(svgOrError[0]);
-            console.log(num, log);
-        }
-        resp.close();
-    }
-    delete(activeRequests[num]);
 
-    if (!(--requestsToServe)) {
+        out = JSON.stringify({input: src, mml: mml, svg: svg});
+        resp.statusCode = 200;
+        resp.setHeader('Content-Type', 'application/json');
+        resp.setHeader('Content-Length', utf8Strlen(out).toString());
+        resp.write(out);
+    } else {
+        // svg is not an string, it's an error list instead
+        out = JSON.stringify({input: src, mml: mml, error: svg[0]});
+        resp.statusCode = 400;
+        resp.setHeader('Content-Type', 'application/json');
+        resp.setHeader('Content-Length', utf8Strlen(out).toString());
+        resp.write(out);
+        phantom.exit(1);
+    }
+
+    delete activeRequests[num];
+
+    if (--requestsToServe == 0) {
         phantom.exit();
     }
 }
@@ -151,11 +109,11 @@ page.onCallback = function (data) {
 
 var parseRequest = function (req) {
     var query = {
-        q: null,
+        math: null,
         num: requestNum++,
         type: 'tex',
         width: null,
-        format: 'svg' // svg or json
+        format: 'json' // or svg
     };
 
     if (req.method != 'POST') {
@@ -171,11 +129,11 @@ var parseRequest = function (req) {
     }
 
     qs = JSON.parse(req.postRaw);
-    query.q = qs.q || query.q;
+    query.math = qs.math || query.math;
     query.type = qs.type || query.type;
     query.format = qs.format || query.format;
 
-    if (!query.q) {
+    if (!query.math) {
         query.statusCode = 400;
         query.error = 'Missing source math';
         return query;
@@ -189,11 +147,8 @@ var listenLoop = function () {
     service = server.listen('0.0.0.0:' + port, function (req, resp) {
         var query = parseRequest(req);
         var requestNum = query.num;
-        console.log(requestNum + ': ' + "received: " + req.method + " " +
-                    req.url.substr(0, 30) + " ..");
 
         if (query.error) {
-            console.log(requestNum + ": error: " + query.error);
             resp.statusCode = query.statusCode;
             resp.write(query.error);
             resp.close();
@@ -211,12 +166,8 @@ var listenLoop = function () {
     });
 
     if (!service) {
-        console.log("server failed to start on port " + port);
         phantom.exit(1);
-    } else {
-        console.log("PhantomJS started on port " + port);
     }
 }
 
-console.log("Loading bench page " + benchPage);
 page.open(benchPage, listenLoop);

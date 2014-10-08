@@ -36,15 +36,8 @@ var startBackend = function (cb) {
     }, 1000);
 };
 
-var handleRequest = function (req, res, q, type, opts) {
-    var reqBody;
-
-    opts = opts || {}
-    reqBody = new Buffer(JSON.stringify({
-        q: q,
-        type: type,
-        format: opts.format || 'json'
-    }));
+var handleRequest = function (opts) {
+    var reqBody = new Buffer(JSON.stringify({math: opts.math, type: opts.type, format: 'json'}));
 
     options = {
         method: 'POST',
@@ -52,12 +45,12 @@ var handleRequest = function (req, res, q, type, opts) {
         body: reqBody,
         headers: {
             'Content-Length': reqBody.length,
-            'Content-Type': 'application/x-www-form-urlencoded'
+            'Content-Type': 'application/json'
         },
         timeout: 2000
     };
 
-    request(options, function (err, response, body) {
+    request(options, function (error, response, body) {
         var errBuf;
 
         try {
@@ -66,34 +59,15 @@ var handleRequest = function (req, res, q, type, opts) {
             body = new Buffer(e.message.toString());
         }
 
-        if (err || response.statusCode !== 200) {
-            if (err) {
-                errBuf = new Buffer(JSON.stringify({
-                    tex: q,
-                    log: err.toString(),
-                    success: false
-                }));
-            } else {
-                errBuf = body;
-            }
-
-            res.writeHead(500, {
-                'Content-Type': 'application/json',
-                'Content-Length': errBuf.length
-            });
-            res.end(errBuf);
-
-            // don't retry the request
-            requestQueue.shift();
-            startBackend();
-            return handleRequests();
-        }
-        res.writeHead(200, {
-            'Content-Type': 'application/json',
-            'Content-length': body.length
-        });
-        res.end(body);
+        // Remove request from queue
         requestQueue.shift();
+        if (error || response.statusCode !== 200) {
+            error = error ? {error: error.toString()} : JSON.parse(body);
+            opts.callback(error, true)
+        } else {
+            opts.callback(JSON.parse(body), false)
+        }
+
         handleRequests();
     });
 }
@@ -115,17 +89,21 @@ app = express.createServer();
 app.use(express.bodyParser({maxFieldsSize: 25 * 1024 * 1024}));
 app.use(express.limit('25mb'));
 
-var handleClientRequest = function (req, res, opts) {
-    var q = req.param('q'),
+var handleClientRequest = function (req, res, responseCallback) {
+    var math = req.param('math'),
         type = req.param('type') || 'tex';
 
     // First some rudimentary input validation
-    if (!q) {
+    if (!math) {
         res.writeHead(400);
-        return res.end(JSON.stringify({error: 'q (query) parameter is missing!'}));
+        return res.end(JSON.stringify({error: 'math parameter is missing!'}));
     }
 
-    requestQueue.push(handleRequest.bind(null, req, res, q, type, opts));
+    requestQueue.push(handleRequest.bind(null, {
+        math: math,
+        type: type,
+        callback: responseCallback
+    }));
 
     // phantomjs only handles one request at a time. Enforce this.
     if (requestQueue.length === 1) {
@@ -134,12 +112,32 @@ var handleClientRequest = function (req, res, opts) {
     }
 };
 
-app.all('/', function(req, res) {
-    return handleClientRequest(req, res);
+app.all('/equation.json', function(req, res) {
+    return handleClientRequest(req, res, function (body, isError) {
+        var buffer = new Buffer(JSON.stringify(body)),
+            statusCode = isEerror ? 500 : 200;
+
+        res.writeHead(statusCode, {
+            'Content-Type': 'application/json',
+            'Content-Length': buffer.length
+        });
+        res.end(buffer);
+    });
 });
 
-app.all('/svg', function(req, res) {
-    return handleClientRequest(req, res, {svg: true});
+app.all('/equation.svg', function(req, res) {
+    return handleClientRequest(req, res, function (body, isEerror) {
+        var buffer = new Buffer(isEerror ? body.error : body.svg),
+            statusCode = isEerror ? 500 : 200,
+            contentType = isEerror ? 'text/html; charset=utf-8' :
+                                     'image/svg+xml; charset=utf-8';
+
+        res.writeHead(statusCode, {
+            'Content-Type': contentType,
+            'Content-Length': buffer.length
+        });
+        res.end(buffer);
+    });
 });
 
 

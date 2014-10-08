@@ -39,13 +39,13 @@ window.engine = (new (function () {
                 div: document.getElementById('math-tex'),
                 jax: MathJax.Hub.getAllJax('math-tex')[0],
                 last_width: null,
-                last_q: ''
+                last_math: ''
             }
             this.mml = {
                 div: document.getElementById('math-mml'),
                 jax: MathJax.Hub.getAllJax('math-mml')[0],
                 last_width: null,
-                last_q: ''
+                last_math: ''
             }
             this._process_buffered();
         }));
@@ -112,14 +112,14 @@ window.engine = (new (function () {
     };
 
     // When process() is finished, the callback callback will be invoked with
-    // an array [<q string>, <svg out>]. If there is an error during the
+    // an array [<math string>, <svg out>]. If there is an error during the
     // rendering then the second element, instead of a string, will be a nested
     // array with one string element giving the error message.
     this.process = function (query, callback) {
         var type = query.type,
             t = this[type],
             success = false,
-            q, width, div, jax;
+            math, width, div, jax;
 
         if (t === null || t.jax === null) {
             this.buffer.push([query, callback]);
@@ -127,23 +127,23 @@ window.engine = (new (function () {
             width = query.width || '1000';
             div = t.div;
             jax = t.jax;
-            q = query.q;
+            math = query.math;
 
             div.setAttribute('style', 'width: ' + width + 'px');
 
             // Possibilities:
-            // - if q and width are the same as last time, no need to Rerender
-            // - if q is the same, but width is not, then Rerender() (calling
+            // - if math and width are the same as last time, no need to Rerender
+            // - if math is the same, but width is not, then Rerender() (calling
             //   Text() does not work)
-            // - if q is not the same, call Text()
+            // - if math is not the same, call Text()
 
-            if (t.last_q == q && t.last_width !== width) {
+            if (t.last_math == math && t.last_width !== width) {
                 this.Q.Push(['Rerender', jax]);
-            } else if (t.last_q != q) {
-                this.Q.Push(['Text', jax, q]);
+            } else if (t.last_math != math) {
+                this.Q.Push(['Text', jax, math]);
             }
 
-            t.last_q = q;
+            t.last_math = math;
             t.last_width = width;
 
             this.Q.Push(this.bind(function () {
