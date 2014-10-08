@@ -1,21 +1,14 @@
 var VERSION = '0.1-dev';
 
 var fs = require('fs'),
-    system = require('system'),
-    Getopt = require('node-getopt'),
+    getopt = require('node-getopt'),
     server = require('webserver').create(),
     page = require('webpage').create();
-
-var args = system.args;
 
 var port = 16000;
 var requestsToServe = -1;
 var benchPage = 'index.html';
 var debug = false;
-
-// Parse command-line options.  This keeps track of which one we are on
-var argNum = 1;
-var arg;
 
 // activeRequests holds information about any active MathJax requests.  It is
 // a hash, with a sequential number as the key.  requestNum gets incremented
@@ -24,31 +17,15 @@ var arg;
 // is an array of [<response object>, <start time>].
 var requestNum = 0;
 var activeRequests = {};
-
-// This will hold the test HTML form, which is read once, the first time it is
-// requested, from test.html.
-var testFormFilename = 'test.html';
-var testForm = null;
-
 var service = null;
 
-var usage = [
-    'Usage: phantomjs main.js [options]',
-    'Options:',
-    '  -r,--requests <num>  Process this many requests and then exit. -1 means ',
-    '                       never stop.',
-    '  -b,--bench <page>    Use alternate bench page (default is index.html)',
-    '  -d,--debug           Enable verbose debug messages'
-].join("\n");
-
-var opts = new Getopt([
+var opts = getopt.create([
     ['v', 'version',      'Print version number and exit'],
     ['p', 'port=ARG',     'Port to listen'],
     ['r', 'requests=ARG', 'Process this many requests and then exit. -1 means never stop.'],
     ['b', 'bench=ARG',    'Use alternate bench page (default index.html)'],
     ['d', 'debug',        'Enable verbose debug messages']
 ]).bindHelp().parseSystem();
-
 
 if (opts.options.version) {
     console.log('svgtex version ' + VERSION);
@@ -101,7 +78,7 @@ page.onCallback = function (data) {
         validRequest = false,
         log;
 
-    if( (typeof svgOrError) === 'string'){
+    if ((typeof svgOrError) === 'string'){
         validRequest = true;
         log = num + ': ' + src.substr(0, 30) + '.. ' +
             src.length + 'B query, OK ' + svgOrError.length + 'B result' +
@@ -110,8 +87,8 @@ page.onCallback = function (data) {
         log = src.substr(0, 30) + '.. ' +
             src.length + 'B query, error: ' + svgOrError[0] + durationMsg;
     }
-    if(query.format == 'json'){
-        if ( validRequest ) {
+    if (query.format == 'json'){
+        if (validRequest) {
             resp.statusCode = 200;
 
             // Temporary fix for BUG 62921
@@ -169,8 +146,6 @@ page.onCallback = function (data) {
 // Parse the request and return an object with the parsed values.
 // It will either have an error indication, e.g.
 //   { num: 5, statusCode: 400, error: "message" }
-// Or indicate that the test form should be returned, e.g.
-//   { num: 5, testForm: 1 }
 // or a valid request, e.g.
 //   { num: 5, type: 'tex', q: 'n^2', width: '500' }
 var parseRequest = function (req) {
@@ -195,20 +170,6 @@ var parseRequest = function (req) {
 
     if (req.method == 'GET') {
         url = req.url;
-
-        if (url == '' || url == '/') {
-            // User has requested the test form
-            if (testForm == null && fs.isReadable(testFormFilename)) {
-                testForm = fs.read(testFormFilename);  // set the global variable
-            }
-            if (testForm != null) {
-                query.testForm = 1;
-            } else {
-                query.statusCode = 500;  // Internal server error
-                query.error = "Can't find test form";
-            }
-            return query;
-        }
 
         iq = url.indexOf("?");
         if (iq == -1) {  // no query string
@@ -276,27 +237,21 @@ var listenLoop = function () {
         console.log(requestNum + ': ' + "received: " + req.method + " " +
                 req.url.substr(0, 30) + " ..");
 
-        if (query.testForm) {
-            console.log(requestNum + ": returning test form");
-            resp.write(testForm);
+        if (query.error) {
+            console.log(requestNum + ": error: " + query.error);
+            resp.statusCode = query.statusCode;
+            resp.write(query.error);
             resp.close();
         } else {
-            if (query.error) {
-                console.log(requestNum + ": error: " + query.error);
-                resp.statusCode = query.statusCode;
-                resp.write(query.error);
-                resp.close();
-            } else {
-                // The following evaluates the function argument in the page's context,
-                // with query -> _query. That, in turn, calls the process() function in
-                // engine.js, which causes MathJax to render the math.  The callback is
-                // PhantomJS's callPhantom() function, which in turn calls page.onCallback(),
-                // above.  This just queues up the call, and will return at once.
-                activeRequests[requestNum] = [resp, (new Date()).getTime()];
-                page.evaluate(function (_query) {
-                    window.engine.process(_query, window.callPhantom);
-                }, query);
-            }
+            // The following evaluates the function argument in the page's context,
+            // with query -> _query. That, in turn, calls the process() function in
+            // engine.js, which causes MathJax to render the math.  The callback is
+            // PhantomJS's callPhantom() function, which in turn calls page.onCallback(),
+            // above.  This just queues up the call, and will return at once.
+            activeRequests[requestNum] = [resp, (new Date()).getTime()];
+            page.evaluate(function (_query) {
+                window.engine.process(_query, window.callPhantom);
+            }, query);
         }
     });
 
