@@ -149,5 +149,36 @@ app.all('/equation.mml', function(req, res) {
     });
 });
 
+app.all('/equation.html', function(req, res) {
+    return handleClientRequest(req, res, function (body, isError) {
+        var buffer, statusCode, html, wrapper, attrs;
+
+        if (isError) {
+            statusCode = 500;
+            buffer = new Buffer(body.error);
+        } else {
+            statusCode = 200;
+            wrapper = req.param('wrapper') || 'span';
+            attrs = [];
+
+            if (req.param('type') != 'mml') {
+                attrs.push('data-condition="' + body.input + '"');
+            }
+            if (body.mml) {
+                attrs.push('data-mml="' + body.mml + '"');
+            }
+
+            attrs = attrs.join(' ');
+            html = '<' + wrapper + ' ' + attrs + '>' + body.svg + '</' + wrapper + '>';
+            buffer = new Buffer(html);
+        }
+
+        res.writeHead(statusCode, {
+            'Content-Type': 'text/html; charset=utf-8',
+            'Content-Length': buffer.length
+        });
+        res.end(buffer);
+    });
+});
 
 module.exports = app;
