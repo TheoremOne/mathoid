@@ -93,6 +93,10 @@ var handleClientRequest = function (req, res, responseCallback) {
         return res.end(JSON.stringify({error: 'math parameter is missing!'}));
     }
 
+    if (type == 'mml' && math.match(/<math[^>]*>/) === null) {
+        math = '<math>' + math + '</math>';
+    }
+
     requestQueue.push(handleRequest.bind(null, {
         math: math,
         type: type,
