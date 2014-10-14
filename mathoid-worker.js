@@ -1,13 +1,13 @@
 var cluster       = require('cluster'),
     child_process = require('child_process'),
     express       = require('express'),
+    cors          = require('cors'),
     request       = require('request'),
     querystring   = require('querystring');
 
 var instanceName = cluster.isWorker ? 'worker(' + process.pid + ')' : 'master';
 
-var restarts = 10,
-    backendStarting = false,
+var backendStarting = false,
     requestQueue = [],
     backend,
     backendPort,
@@ -22,7 +22,7 @@ var startBackend = function (cb) {
 
     backendPort = Math.floor(9000 + Math.random() * 50000);
     backendURL = 'http://localhost:' + backendPort.toString() + '/';
-    backend = child_process.spawn('phantomjs', ['main.js', '-p', backendPort]);
+    backend = child_process.spawn('phantomjs', ['main.js', '-p', backendPort, '-r', 10]);
     backend.stdout.pipe(process.stderr);
     backend.stderr.pipe(process.stderr);
     backend.on('close', startBackend);
@@ -81,6 +81,7 @@ app = express.createServer();
 // Increase the form field size limit from the 2M default.
 app.use(express.bodyParser({maxFieldsSize: 25 * 1024 * 1024}));
 app.use(express.limit('25mb'));
+app.use(cors());
 
 var handleClientRequest = function (req, res, responseCallback) {
     var math = req.param('math'),
