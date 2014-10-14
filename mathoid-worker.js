@@ -169,7 +169,7 @@ app.all('/equation.html', function(req, res) {
                 attrs.push('data-condition="' + body.input + '"');
             }
             if (body.mml) {
-                attrs.push('data-mml="' + body.mml.split('\n').join(' ').replace(/"/g, '\\"') + '"');
+                attrs.push('data-mml="' + body.mml.split('\n').join(' ').replace(/"/g, "'") + '"');
             }
 
             attrs = attrs.join(' ');
