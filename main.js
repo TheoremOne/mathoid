@@ -79,11 +79,9 @@ page.onCallback = function (data) {
         resp = record[0],
         header;
 
-    if (typeof svg === 'string') {
-        if (query.type == 'mml'){
-            mml = src;
-        }
+    mml = mml.replace(/ +/g, ' ').replace(/> </, '><');
 
+    if (typeof svg === 'string') {
         out = JSON.stringify({input: src, mml: mml, svg: svg});
         resp.statusCode = 200;
         resp.setHeader('Content-Type', 'application/json');
