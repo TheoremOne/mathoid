@@ -15,6 +15,8 @@ var backendStarting = false,
     app;
 
 var startBackend = function (cb) {
+    backendStarting = true;
+
     if (backend) {
         backend.removeAllListeners();
         backend.kill('SIGKILL');
@@ -26,7 +28,6 @@ var startBackend = function (cb) {
     backend.stdout.pipe(process.stderr);
     backend.stderr.pipe(process.stderr);
     backend.on('close', startBackend);
-    backendStarting = true;
 
     // Give backend 1 seconds to start up
     setTimeout(function () {
