@@ -35,29 +35,32 @@ window.engine = (function () {
     };
 
     this.compileEquation = function (equation) {
-        var input = document.getElementById('input'),
-            output = null;
+        var input = document.getElementById('input');
 
         input.innerHTML = equation;
 
         MathJax.Hub.Typeset(input, function () {
-            var mml;
+            var mml, ret, output;
 
             mml = MathJax.Hub.getAllJax(input)[0].root.toMathML('');
+            mml = mml.split().join(' ');
 
             if (mml.indexOf('<mtext mathcolor="red">') == -1) {
-                output = {
+                ret = {
                     success: true,
                     input: equation,
                     mml: mml,
                     svg: getSvg()
                 };
             } else {
-                output = {success: false, input: equation};
+                ret = {success: false, input: equation};
             }
-        });
 
-        return output;
+            output = document.createElement('textarea');
+            output.setAttribute('id', 'output');
+            output.value = JSON.stringify(ret);
+            document.getElementsByTagName('body')[0].appendChild(output);
+        });
     };
 
     return this;

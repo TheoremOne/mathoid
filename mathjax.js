@@ -28,15 +28,34 @@ var wait = function (checkFunction, readyFunction) {
     }
 };
 
+page.onConsoleMessage = function (msg) {
+    console.log('Console:', msg);
+};
+
+page.onError = function (msg) {
+    console.log('Console:', msg);
+};
+
 page.open('index.html', function () {
     wait(function () {
         return page.evaluate(function () {
             return document.getElementById('mathjax-loaded') != null;
         });
     }, function () {
-        var out = page.evaluate(function (equation) {
-            return window.engine.compileEquation(equation);
+        page.evaluate(function (equation) {
+            window.engine.compileEquation(equation);
         }, equation);
+    });
+
+    wait(function () {
+        return page.evaluate(function () {
+            return document.getElementById('output') != null;
+        });
+    }, function () {
+        var out = page.evaluate(function () {
+            var output = document.getElementById('output').value;
+            return JSON.parse(output);
+        });
 
         console.log(JSON.stringify(out));
         phantom.exit(0);
