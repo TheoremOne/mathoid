@@ -16,22 +16,23 @@ class MathoidApp < Sinatra::Base
   private
 
   def get_type(equation)
-    equation =~ /<\w+>.*<\/\w+>/ ? :mml : :latex
+    equation =~ %r{<\w+>.*</\w+>} ? :mml : :latex
   end
 
   def process_equation
-    equation = params[:math]
+    equation = params[:math].strip
     type = get_type(equation)
 
     if type == :mml
-      equation = "<math>#{equation}</math>" unless equation =~ /<math>.*<\/math>/
+      equation = equation.gsub(%r{<math[^>]*>}, '').gsub(%r{</math>}, '')
+      equation = "<math>#{equation}</math>"
     elsif type == :latex
-      equation = "\\\\[#{equation}\\\\]" unless equation =~ /\\[\[\(].*\\[\]\)]/
+      equation = "\\[#{equation}\\]" unless equation =~ %r{\\[\[\(].*\\[\]\)]}
     end
 
-    out = `phantomjs ./mathjax.js -e "#{equation}"`
+    out = `phantomjs ./mathjax.js -e "#{equation.shellescape}"`
     out = JSON.parse(out, symbolize_names: true) if out
-    out[:mml] = out[:mml].split.join(' ').gsub(/> +</, '> <')
+    out[:mml] = out[:mml].split.join(' ').gsub(/> +</, '> <') if out[:mml]
     out[:type] = type
     out
   end
