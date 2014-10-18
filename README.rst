@@ -12,6 +12,7 @@ Installation
    - nodejs_
    - npm_
    - phantomjs_
+   - sinatra_
 
 2. Checkout the repository::
 
@@ -70,3 +71,4 @@ Once running, hit the service using the different API endpoints.
 .. _nodejs: http://nodejs.org/
 .. _phantomjs:  http://www.phantomjs.org/
 .. _npm: https://www.npmjs.org/
+.. _sinatra: http://sinatrarb.com/
