@@ -30,7 +30,7 @@ class MathoidApp < Sinatra::Base
       equation = "\\[#{equation}\\]" unless equation =~ %r{\\[\[\(].*\\[\]\)]}
     end
 
-    out = `phantomjs ./mathjax.js -e "#{equation.shellescape}"`
+    out = `phantomjs ./mathjax.js -e '#{equation}'`
     out = JSON.parse(out, symbolize_names: true) if out
     out[:mml] = out[:mml].split.join(' ').gsub(/> +</, '> <') if out[:mml]
     out[:type] = type
