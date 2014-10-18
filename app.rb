@@ -26,7 +26,7 @@ class MathoidApp < Sinatra::Base
     if type == :mml
       equation = "<math>#{equation}</math>" unless equation =~ /<math>.*<\/math>/
     elsif type == :latex
-      equation = "\\\\[#{equation}\\\\]" unless equation =~ /\\\\[\[\(].*\\\\[\]\)]/
+      equation = "\\\\[#{equation}\\\\]" unless equation =~ /\\[\[\(].*\\[\]\)]/
     end
 
     out = `phantomjs ./mathjax.js -e "#{equation}"`
