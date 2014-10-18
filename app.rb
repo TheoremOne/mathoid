@@ -3,59 +3,62 @@ require 'sinatra'
 require 'sinatra/json'
 
 
-get  '/equation.json' do; as_json; end
-post '/equation.json' do; as_json; end
-get  '/equation.svg'  do; as_svg;  end
-post '/equation.svg'  do; as_svg;  end
-get  '/equation.mml'  do; as_mml;  end
-post '/equation.mml'  do; as_mml;  end
-get  '/equation.html' do; as_html; end
-post '/equation.html' do; as_html; end
+class MathoidApp < Sinatra::Base
+  get  '/equation.json' do; as_json; end
+  post '/equation.json' do; as_json; end
+  get  '/equation.svg'  do; as_svg;  end
+  post '/equation.svg'  do; as_svg;  end
+  get  '/equation.mml'  do; as_mml;  end
+  post '/equation.mml'  do; as_mml;  end
+  get  '/equation.html' do; as_html; end
+  post '/equation.html' do; as_html; end
 
+  private
 
-def get_type(equation)
-  equation =~ /<\w+>.*<\/\w+>/ ? :mml : :latex
-end
-
-def process_equation
-  equation = params[:math]
-  type = get_type(equation)
-
-  if type == :mml
-    equation = "<math>#{equation}</math>" unless equation =~ /<math>.*<\/math>/
-  elsif type == :latex
-    equation = "\\\\[#{equation}\\\\]" unless equation =~ /\\\\[\[\(].*\\\\[\]\)]/
+  def get_type(equation)
+    equation =~ /<\w+>.*<\/\w+>/ ? :mml : :latex
   end
 
-  out = `phantomjs ./mathjax.js -e "#{equation}"`
-  out = JSON.parse(out, symbolize_names: true) if out
-  out[:mml] = out[:mml].split.join(' ').gsub(/> +</, '> <')
-  out[:type] = type
-  out
-end
+  def process_equation
+    equation = params[:math]
+    type = get_type(equation)
 
-def as_json
-  json process_equation
-end
+    if type == :mml
+      equation = "<math>#{equation}</math>" unless equation =~ /<math>.*<\/math>/
+    elsif type == :latex
+      equation = "\\\\[#{equation}\\\\]" unless equation =~ /\\\\[\[\(].*\\\\[\]\)]/
+    end
 
-def as_svg
-  headers 'Content-Type' => 'image/svg+xml; charset=utf-8'
-  process_equation[:svg]
-end
+    out = `phantomjs ./mathjax.js -e "#{equation}"`
+    out = JSON.parse(out, symbolize_names: true) if out
+    out[:mml] = out[:mml].split.join(' ').gsub(/> +</, '> <')
+    out[:type] = type
+    out
+  end
 
-def as_mml
-  headers 'Content-Type' => 'text/mml; charset=utf-8'
-  process_equation[:mml]
-end
+  def as_json
+    json process_equation
+  end
 
-def as_html
-  wrapper = params[:wrapper] || 'span'
-  eq = process_equation
+  def as_svg
+    headers 'Content-Type' => 'image/svg+xml; charset=utf-8'
+    process_equation[:svg]
+  end
 
-  attrs = {}
-  attrs['condition'] = eq[:input] if eq[:type] == :latex
-  attrs['mml'] = eq[:mml].gsub(/"/, "'")
-  attrs = attrs.map{|k, v| "data-#{k}=\"#{v}\""}.join(' ')
+  def as_mml
+    headers 'Content-Type' => 'text/mml; charset=utf-8'
+    process_equation[:mml]
+  end
 
-  "<#{wrapper} #{attrs}>#{eq[:svg]}</#{wrapper}>"
+  def as_html
+    wrapper = params[:wrapper] || 'span'
+    eq = process_equation
+
+    attrs = {}
+    attrs['condition'] = eq[:input] if eq[:type] == :latex
+    attrs['mml'] = eq[:mml].gsub(/"/, "'")
+    attrs = attrs.map{|k, v| "data-#{k}=\"#{v}\""}.join(' ')
+
+    "<#{wrapper} #{attrs}>#{eq[:svg]}</#{wrapper}>"
+  end
 end
