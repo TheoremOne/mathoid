@@ -1,0 +1,13 @@
+#!/bin/bash
+set -e
+
+export MATHOID_ROOT=/srv/mathoid
+export MATHOID_APP=$MATHOID_ROOT/mathoid
+export MATHOID_PORT=${MATHOID_PORT:-7090}
+export RBENV_ROOT=$MATHOID_ROOT/rbenv
+export PATH="$RBENV_ROOT/bin:$RBENV_ROOT/shims:$PATH"
+
+eval "$(rbenv init -)"
+rbenv rehash
+
+cd $MATHOID_APP && unicorn -c unicorn.rb -D -E ${RACK_ENV:-production}
