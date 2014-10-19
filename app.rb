@@ -1,9 +1,14 @@
 require 'json'
 require 'sinatra'
 require 'sinatra/json'
+require 'sinatra/cross_origin'
 
 
 class MathoidApp < Sinatra::Base
+  configure do
+    enable :cross_origin
+  end
+
   get  '/equation.json' do; as_json; end
   post '/equation.json' do; as_json; end
   get  '/equation.svg'  do; as_svg;  end
