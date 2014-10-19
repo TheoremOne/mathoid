@@ -1,22 +1,29 @@
 require 'json'
 require 'sinatra'
 require 'sinatra/json'
-require 'sinatra/cross_origin'
 
 
 class MathoidApp < Sinatra::Base
-  configure do
-    enable :cross_origin
+  before do
+    headers 'Access-Control-Allow-Origin' => '*',
+            'Access-Control-Allow-Methods' => ['OPTIONS', 'GET', 'POST']
   end
 
-  get  '/equation.json' do; as_json; end
-  post '/equation.json' do; as_json; end
-  get  '/equation.svg'  do; as_svg;  end
-  post '/equation.svg'  do; as_svg;  end
-  get  '/equation.mml'  do; as_mml;  end
-  post '/equation.mml'  do; as_mml;  end
-  get  '/equation.html' do; as_html; end
-  post '/equation.html' do; as_html; end
+  options '/equation.json' do; 200;     end
+  get     '/equation.json' do; as_json; end
+  post    '/equation.json' do; as_json; end
+
+  options '/equation.svg' do; 200;    end
+  get     '/equation.svg' do; as_svg; end
+  post    '/equation.svg' do; as_svg; end
+
+  options '/equation.mml' do; 200;    end
+  get     '/equation.mml' do; as_mml; end
+  post    '/equation.mml' do; as_mml; end
+
+  options '/equation.html' do; 200;     end
+  get     '/equation.html' do; as_html; end
+  post    '/equation.html' do; as_html; end
 
   private
 
