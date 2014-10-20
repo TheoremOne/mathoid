@@ -69,7 +69,11 @@ window.engine = (function () {
             if (error) {
                 ret = {success: false, input: equation};
             } else {
-                ret = {success: true, input: equation, mml: mml, svg: getSvg(input)};
+                try {
+                    ret = {success: true, input: equation, mml: mml, svg: getSvg(input)};
+                } catch (err) {
+                    ret = {success: false, input: equation};
+                }
             }
 
             output = document.createElement('textarea');
