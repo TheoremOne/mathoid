@@ -25,6 +25,16 @@ class MathoidApp < Sinatra::Base
   get     '/equation.html' do; as_html; end
   post    '/equation.html' do; as_html; end
 
+  error 404 do
+    status(404)
+    json({success: false, message: 'Not found'})
+  end
+
+  error 500 do |err|
+    status(500)
+    json({success: false, message: err.to_s})
+  end
+
   private
 
   def get_type(equation)
@@ -42,7 +52,9 @@ class MathoidApp < Sinatra::Base
       equation = "\\[#{equation}\\]" unless equation =~ %r{\\[\[\(].*\\[\]\)]}
     end
 
-    out = `phantomjs ./mathjax.js -e '#{equation}'`
+    out = RestClient.post("http://localhost:#{ENV['PHANTOM_PORT']}",
+                          {equation: equation})
+
     out = JSON.parse(out, symbolize_names: true) if out
     out[:mml] = out[:mml].split.join(' ').gsub(/> +</, '> <') if out[:mml]
     out[:type] = type

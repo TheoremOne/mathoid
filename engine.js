@@ -9,13 +9,12 @@ window.engine = (function () {
     });
 
     MathJax.Hub.Queue(function () {
-        var loaded = document.createElement('span');
-        loaded.setAttribute('id', 'mathjax-loaded');
-        loaded.innerHTML = 'MathJax Ready';
-        document.getElementsByTagName('body')[0].appendChild(loaded);
+        if (typeof window.callPhantom == 'function') {
+            window.callPhantom({loaded: true});
+        }
     });
 
-    this.getSvg = function () {
+    this.getSvg = function (input) {
         var origDefs, defs, uses, i, id, tmpDiv;
 
         origDefs = document.getElementById('MathJax_SVG_Hidden').nextSibling.childNodes[0];
@@ -43,10 +42,17 @@ window.engine = (function () {
         return tmpDiv.innerHTML;
     };
 
-    this.compileEquation = function (equation) {
-        var input = document.getElementById('input');
+    this.compileEquation = function (equation, id) {
+        var input;
 
+        console.log("Got equation (" + id + "):", equation);
+
+        input = document.createElement('div');
+        input.setAttribute('id', 'input-' + id);
         input.innerHTML = equation;
+        document.getElementsByTagName('body')[0].appendChild(input);
+
+        console.log("Created node (" + id + ")");
 
         MathJax.Hub.Typeset(input, function () {
             var mml, ret, output, error;
@@ -57,16 +63,17 @@ window.engine = (function () {
                 error = mml.indexOf('<mtext mathcolor="red">') >= 0;
             } catch (err) {
                 error = true;
+                console.log("Error (" + id + "):", err.toString());
             }
 
             if (error) {
                 ret = {success: false, input: equation};
             } else {
-                ret = {success: true, input: equation, mml: mml, svg: getSvg()};
+                ret = {success: true, input: equation, mml: mml, svg: getSvg(input)};
             }
 
             output = document.createElement('textarea');
-            output.setAttribute('id', 'output');
+            output.setAttribute('id', 'output-' + id);
             output.value = JSON.stringify(ret);
             document.getElementsByTagName('body')[0].appendChild(output);
         });

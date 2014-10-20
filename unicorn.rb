@@ -16,6 +16,7 @@ stdout_path MATHOID_FILES + "/log/access-#{MATHOID_PORT}.log"
 
 before_fork do |server, worker|
   old_pid = MATHOID_FILES + "/pids/unicorn-#{MATHOID_PORT}.oldbin"
+
   if File.exists?(old_pid) && server.pid != old_pid
     begin
       Process.kill('QUIT', File.read(old_pid).to_i)
@@ -25,4 +26,15 @@ before_fork do |server, worker|
   end
 
   sleep 1
+end
+
+
+after_fork do |server, worker|
+  port = (rand * 1000 + 10000).to_i
+  ENV['PHANTOM_PORT'] = port.to_s
+
+  phantom_job = fork do
+    exec "PORT=#{port} phantomjs ./mathjax.js"
+  end
+  Process.detach(phantom_job)
 end

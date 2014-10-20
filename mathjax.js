@@ -1,22 +1,7 @@
 var system = require('system'),
-    opts = require('minimist')(system.args.slice(1)),
     page = require('webpage').create(),
-    system = require('system'),
-    equation, usage;
-
-usage = [
-    'Usage: phantomjs mathjax.js [options]',
-    'Options:',
-    '  -h,--help                        Print this usage message and exit',
-    '  -e,--equation=LATEXT/MathMML     LaTeX or MathMML equation to render',
-].join('\n');
-
-equation = opts.equation || opts.e;
-
-if (opts.help || opts.h || !equation) {
-    console.log(usage);
-    phantom.exit(0);
-}
+    server = require('webserver').create(),
+    service;
 
 var wait = function (checkFunction, readyFunction) {
     if (checkFunction()) {
@@ -29,35 +14,41 @@ var wait = function (checkFunction, readyFunction) {
 };
 
 page.onConsoleMessage = function (msg) {
-    console.log('Console:', msg);
+    console.log('PhantomJS Message:', msg);
 };
 
 page.onError = function (msg) {
-    console.log('Console:', msg);
+    console.log('PhantomJS Message [Error]:', msg);
 };
 
-page.open('index.html', function () {
-    wait(function () {
-        return page.evaluate(function () {
-            return document.getElementById('mathjax-loaded') != null;
-        });
-    }, function () {
-        page.evaluate(function (equation) {
-            window.engine.compileEquation(equation);
-        }, equation);
-    });
+page.onCallback = function (data) {
+    console.log('MathJax Loaded');
+};
+
+page.open('index.html');
+
+service = server.listen(system.env.PORT || 6000, function (req, res) {
+    var randId = parseInt(Math.random() * 1000000, 10),
+        equation = req.post.math;
+
+    console.log('Server Request (' + randId + '):', equation);
+
+    page.evaluate(function (opts) {
+        window.engine.compileEquation(opts.equation, opts.id);
+    }, {equation: equation, id: randId});
 
     wait(function () {
-        return page.evaluate(function () {
-            return document.getElementById('output') != null;
-        });
+        return page.evaluate(function (id) {
+            return document.getElementById('output-' + id) != null;
+        }, randId);
     }, function () {
-        var out = page.evaluate(function () {
-            var output = document.getElementById('output').value;
-            return JSON.parse(output);
-        });
+        var out = page.evaluate(function (id) {
+            return document.getElementById('output-' + id).value;
+        }, randId);
 
-        console.log(JSON.stringify(out));
-        phantom.exit(0);
+        res.statusCode = 200;
+        res.headers = {'Content-Type': 'application/json'};
+        res.write(out);
+        res.close()
     });
 });
