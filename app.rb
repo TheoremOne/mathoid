@@ -55,9 +55,8 @@ class MathoidApp < Sinatra::Base
 
     out = RestClient.post("http://localhost:#{ENV['PHANTOM_PORT']}",
                           {math: equation})
-    halt 400 unless out[:success]
-
-    out = JSON.parse(out, symbolize_names: true) if out
+    out = JSON.parse(out, symbolize_names: true)
+    halt(400) unless out[:success]
     out[:mml] = out[:mml].split.join(' ').gsub(/> +</, '> <') if out[:mml]
     out[:type] = type
     out
