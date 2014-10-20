@@ -49,20 +49,20 @@ window.engine = (function () {
         input.innerHTML = equation;
 
         MathJax.Hub.Typeset(input, function () {
-            var mml, ret, output;
+            var mml, ret, output, error;
 
-            mml = MathJax.Hub.getAllJax(input)[0].root.toMathML('');
-            mml = mml.split().join(' ');
+            try {
+                mml = MathJax.Hub.getAllJax(input)[0].root.toMathML('');
+                mml = mml.split().join(' ');
+                error = mml.indexOf('<mtext mathcolor="red">') >= 0;
+            } catch (err) {
+                error = true;
+            }
 
-            if (mml.indexOf('<mtext mathcolor="red">') == -1) {
-                ret = {
-                    success: true,
-                    input: equation,
-                    mml: mml,
-                    svg: getSvg()
-                };
-            } else {
+            if (error) {
                 ret = {success: false, input: equation};
+            } else {
+                ret = {success: true, input: equation, mml: mml, svg: getSvg()};
             }
 
             output = document.createElement('textarea');
