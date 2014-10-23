@@ -50,18 +50,18 @@ class MathoidApp < Sinatra::Base
       equation = equation.gsub(%r{<math[^>]*>}, '').gsub(%r{</math>}, '')
       equation = "<math>#{equation}</math>"
     elsif type == :latex
-      equation = "\\[#{equation}\\]" unless equation =~ %r{\\[\[\(].*\\[\]\)]}
+      equation = "\\[#{equation}\\]" unless equation =~ %r{[\[\(].*[\]\)]}
     end
 
     out = RestClient.post("http://localhost:#{ENV['PHANTOM_PORT']}",
                           {math: equation})
     out = JSON.parse(out, symbolize_names: true)
-    halt(400) unless out[:success]
+    halt(400, JSON.dump(out)) unless out[:success]
     out[:mml] = out[:mml].split.join(' ').gsub(/> +</, '> <') if out[:mml]
     out[:type] = type
     out
   rescue => err
-    halt 400
+    halt 400, err.to_s
   end
 
   def as_json
