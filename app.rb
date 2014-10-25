@@ -54,7 +54,7 @@ class MathoidApp < Sinatra::Base
       equation = equation.gsub(%r{<math[^>]*>}, '').gsub(%r{</math>}, '')
       equation = "<math>#{equation}</math>"
     elsif type == :latex
-      equation = "\\[#{equation}\\]" unless equation =~ %r{[\[\(].*[\]\)]}
+      equation = "\\[#{equation}\\]" unless equation =~ %r{^[\[\(].*[\]\)]$}
     end
 
     out = RestClient.post("http://localhost:#{ENV['PHANTOM_PORT']}",
