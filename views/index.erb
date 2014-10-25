@@ -1,0 +1,70 @@
+<!doctype html>
+<html>
+  <head>
+    <title>MathoidRB Example</title>
+    <link href="//maxcdn.bootstrapcdn.com/bootstrap/3.2.0/css/bootstrap.min.css" rel="stylesheet">
+
+    <style>
+      body     { padding: 20px;               }
+      textarea { display: block; width: 100%; }
+      button   { margin-top: 20px;            }
+      #svg     { text-align: center;          }
+      #preview { display: none;               }
+    </style>
+  </head>
+
+  <body>
+    <h3>Equation Form</h3>
+    <form role="form" mathod="post" action="/equation.json">
+      <textarea name="equation" rows="10" placeholder="Type LaTeX/MathML Equation"></textarea>
+      <button class="btn btn-primary">Submit</button>
+      <button class="btn btn-warning" id="reset">Reset</button>
+    </form>
+
+    <div id="preview">
+      <h3>SVG Preview</h3>
+      <div id="svg"></div>
+
+      <h3>MathML Preview</h3>
+      <pre id="mml"></pre>
+
+      <h3>JSON Response Preview</h3>
+      <pre id="json-response"></pre>
+    </div>
+
+    <script type="text/javascript" src="https://code.jquery.com/jquery-1.11.1.min.js"></script>
+    <script type="text/javascript" src="//maxcdn.bootstrapcdn.com/bootstrap/3.2.0/js/bootstrap.min.js"></script>
+    <script type="text/javascript">
+      $(function () {
+        $('form').on('submit', function (event) {
+          event.preventDefault();
+          event.stopPropagation();
+
+          $.post('/equation.json', {
+            math: $('[name="equation"]').val()
+          }).done(function (response) {
+            $('#preview').slideDown('fast', function () {
+              $('#json-response').text(JSON.stringify(response));
+              $('#mml').text(response.mml);
+              $('#svg').html(response.svg);
+            });
+          }).error(function (response) {
+            console.error("ERROR:", response);
+          }, 'json');
+        });
+
+        $('#reset').on('click', function (event) {
+          event.preventDefault();
+          event.stopPropagation();
+
+          $('#preview').slideUp('fast', function () {
+            $('[name="equation"]').val('');
+            $('#json-response').text('');
+            $('#mml').text('');
+            $('#svg').html('');
+          });
+        });
+      });
+    </script>
+  </body>
+</html>

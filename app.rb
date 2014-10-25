@@ -10,6 +10,10 @@ class MathoidApp < Sinatra::Base
             'Access-Control-Allow-Methods' => ['OPTIONS', 'GET', 'POST']
   end
 
+  get '/' do
+    erb :index
+  end
+
   options '/equation.json' do; 200;     end
   get     '/equation.json' do; as_json; end
   post    '/equation.json' do; as_json; end
