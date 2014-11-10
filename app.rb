@@ -69,7 +69,7 @@ class MathoidApp < Sinatra::Base
   end
 
   def as_json
-    json process_equation
+    json(process_equation, content_type: 'utf-8')
   end
 
   def as_svg
